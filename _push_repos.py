@@ -18,6 +18,7 @@ import re
 import subprocess
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -44,13 +45,25 @@ def load_env():
     return out
 
 
-def api(url, token, method="GET", payload=None):
-    data = json.dumps(payload).encode() if payload is not None else None
+def api(url, token, method="GET", payload=None, form=False, query=False):
+    data = None
+    if payload is not None:
+        if form:
+            data = urllib.parse.urlencode(payload).encode()
+        else:
+            data = json.dumps(payload).encode()
+    if query and token:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}access_token={urllib.parse.quote(token)}"
     req = urllib.request.Request(url, data=data, method=method)
-    req.add_header("Authorization", "Bearer " + token)
+    if form:
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+    else:
+        req.add_header("Content-Type", "application/json")
+    if not query:
+        req.add_header("Authorization", "Bearer " + token)
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("User-Agent", "savantcat-agent")
-    req.add_header("Content-Type", "application/json")
     try:
         with urllib.request.urlopen(req, timeout=40) as r:
             b = r.read().decode()
@@ -76,6 +89,7 @@ def git(args, extra_header=None):
 def ensure_repo_and_push(kind, token, login_default=None):
     """kind: 'github' | 'gitee'"""
     print(f"\n=== {kind.title()} ===")
+    gq = (kind == "gitee")
     if kind == "github":
         who, repos_api, home = "https://api.github.com/user", "https://api.github.com/user/repos", "https://github.com"
         host_api = "https://api.github.com/repos"
@@ -83,20 +97,20 @@ def ensure_repo_and_push(kind, token, login_default=None):
         who, repos_api, home = "https://gitee.com/api/v5/user", "https://gitee.com/api/v5/user/repos", "https://gitee.com"
         host_api = "https://gitee.com/api/v5/repos"
 
-    st, me = api(who, token)
+    st, me = api(who, token, query=gq)
     if st != 200:
         print(f"  [X] token 无效 (HTTP {st}) {str(me)[:200]}")
         return False
     login = me.get("login")
     print(f"  [OK] 身份: {login}")
 
-    st, _ = api(f"{host_api}/{login}/{REPO_NAME}", token)
+    st, _ = api(f"{host_api}/{login}/{REPO_NAME}", token, query=gq)
     if st == 404:
         body = {"name": REPO_NAME, "description": DESC[:120], "homepage": HOME,
-                "private": False, "has_issues": True, "auto_init": False}
+                "private": "false", "has_issues": "true", "auto_init": "false"}
         if kind == "gitee":
-            body["public"] = True          # Gitee: private:false 不生效，必须显式 public
-        st, r = api(repos_api, token, "POST", body)
+            body["public"] = "true"        # Gitee: private:false 不生效，必须显式 public
+        st, r = api(repos_api, token, "POST", body, form=gq, query=gq)
         print("  " + ("[OK] 已创建仓库" if st in (200, 201) else f"[X] 建仓失败 HTTP {st}: {str(r)[:250]}"))
         if st not in (200, 201):
             return False
@@ -104,7 +118,7 @@ def ensure_repo_and_push(kind, token, login_default=None):
         print("  [--] 仓库已存在，直接推送")
 
     url = f"{home}/{login}/{REPO_NAME}.git"
-    auth = "Authorization: *** " + base64.b64encode(f"{login}:{token}".encode()).decode()
+    auth = "Authorization: Basic " + base64.b64encode(f"{login}:{token}".encode()).decode()
     remote = "origin" if kind == "github" else "gitee"
     git(["remote", "remove", remote])
     git(["remote", "add", remote, url])
