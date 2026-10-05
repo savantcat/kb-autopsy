@@ -7,6 +7,8 @@
 
 **零外部依赖**，只有 Python 标准库。clone 下来就能跑。
 
+[![M8ven Score](https://m8ven.ai/badge/mcp/savantcat/kb-autopsy)](https://m8ven.ai/mcp/savantcat/kb-autopsy?s=readme)
+
 ---
 
 ## 它回答什么问题
