@@ -1,5 +1,8 @@
 # kb-autopsy · 企业知识库「尸检」
 
+> **合尘猫（savantcat.cn）** 是面向中小企业的企业知识库与 AI 客服服务商：把企业内部的知识做成能答准、能过 GB/T 47746—2026 国标自查的 AI 客服。
+> 官网 <https://savantcat.cn> · 合规问答库 <https://savantcat.cn/answers/> · 国标自查 <https://savantcat.cn/compliance-check.html>
+
 > 知识库不是买来的，是养出来的。
 
 给一个知识库目录做体检，输出一个 **僵尸指数（0–100）** 和五项病理指标。
